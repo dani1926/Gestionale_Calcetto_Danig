@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestionale Calcetto</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 800px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    select, input { margin-top: 5px; padding: 5px; width: 300px; }
+    button { margin-top: 10px; padding: 5px 10px; cursor: pointer; }
+    table { border-collapse: collapse; margin-top: 15px; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f5f5f5; }
+    td button { padding: 2px 6px; }
+  </style>
+</head>
+<body>
+  <h2>Gestionale Calcetto</h2>
+
+  <label for="giorno">Giorno:</label>
+  <select id="giorno">
+    <option value="Lunedì">Lunedì</option>
+    <option value="Martedì">Martedì</option>
+    <option value="Mercoledì">Mercoledì</option>
+    <option value="Giovedì">Giovedì</option>
+    <option value="Venerdì">Venerdì</option>
+    <option value="Sabato">Sabato</option>
+    <option value="Domenica">Domenica</option>
+  </select>
+
+  <label for="data">Data:</label>
+  <input type="date" id="data">
+
+  <label for="orario">Orario:</label>
+  <input type="time" id="orario" step="60">
+
+  <label for="campo">Campo:</label>
+  <input type="text" id="campo">
+
+  <label for="maps">Link Maps (opzionale):</label>
+  <input type="text" id="maps" placeholder="https://maps.google.com/...">
+
+  <label for="giocatori">Seleziona giocatori:</label>
+  <select id="giocatori" multiple size="10">
+    <option>DANIG</option>
+    <option>ANGELO</option>
+    <option>ANTONIO INGLESE</option>
+    <option>ANTONIO RUSSO</option>
+    <option>ANTONIO ESPOSITO</option>
+    <option>CARLETT</option>
+    <option>CUCCURULLO</option>
+    <option>CHRIS QG</option>
+    <option>CIROANDREA</option>
+    <option>DOMY QG</option>
+    <option>VINCENZO D'ANTONIO PIO</option>
+    <option>ENIO</option>
+    <option>ENZO SALOMON</option>
+    <option>ENRICO CAVALLO</option>
+    <option>MERCONALDO</option>
+    <option>JOSHUA</option>
+    <option>KEKKOALAIAGAY</option>
+    <option>MATT</option>
+    <option>MANU</option>
+    <option>MARCO CAVA</option>
+    <option>MARTINELLI PEPP</option>
+    <option>NICO IL BELLO</option>
+    <option>GABRIELE</option>
+    <option>DANIELE 111</option>
+    <option>BARASKINHO</option>
+    <option>GIANLUCA</option>
+    <option>KEKKO TORNADO</option>
+    <option>MARCELLO DIO</option>
+    <option>ROBBY98PRO</option>
+    <option>FRANCY 3 GAMBE</option>
+  </select>
+
+  <br>
+  <button onclick="aggiungiGiocatori()">Aggiungi selezionati</button>
+  <button onclick="aggiungiTutti()">Aggiungi tutti</button>
+  <button onclick="pulisciLista()">Pulisci lista</button>
+
+  <h3>Lista Giocatori</h3>
+  <table id="tabellaGiocatori">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nome</th>
+        <th>Azione</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button onclick="generaPDF()">Scarica PDF</button>
+
+  <script>
+    const tabellaBody = document.querySelector("#tabellaGiocatori tbody");
+
+    function aggiornaNumeri() {
+      [...tabellaBody.children].forEach((tr, i) => {
+        tr.children[0].textContent = i + 1;
+      });
+    }
+
+    function aggiungiGiocatori() {
+      const select = document.getElementById("giocatori");
+      Array.from(select.selectedOptions).forEach(opt => aggiungiGiocatore(opt.text));
+    }
+
+    function aggiungiTutti() {
+      const select = document.getElementById("giocatori");
+      Array.from(select.options).forEach(opt => aggiungiGiocatore(opt.text));
+    }
+
+    function aggiungiGiocatore(nome) {
+      if (![...tabellaBody.children].some(tr => tr.children[1].textContent === nome)) {
+        const tr = document.createElement("tr");
+        const tdNum = document.createElement("td");
+        const tdNome = document.createElement("td");
+        const tdAzione = document.createElement("td");
+        const btn = document.createElement("button");
+        btn.textContent = "Rimuovi";
+        btn.onclick = () => { tr.remove(); aggiornaNumeri(); };
+
+        tdNome.textContent = nome;
+        tdAzione.appendChild(btn);
+        tr.appendChild(tdNum);
+        tr.appendChild(tdNome);
+        tr.appendChild(tdAzione);
+        tabellaBody.appendChild(tr);
+        aggiornaNumeri();
+      }
+    }
+
+    function pulisciLista() {
+      tabellaBody.innerHTML = "";
+    }
+
+    async function generaPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      let y = 20;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("LISTA CALCETTO", 105, y, { align: "center" });
+
+      y += 15;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Giorno:", 20, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(document.getElementById("giorno").value || "-", 60, y);
+
+      y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.text("Data:", 20, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(document.getElementById("data").value || "-", 60, y);
+
+      y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.text("Orario:", 20, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(document.getElementById("orario").value || "-", 60, y);
+
+      y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.text("Campo:", 20, y);
+      const campo = document.getElementById("campo").value || "-";
+      const maps = document.getElementById("maps").value.trim();
+
+      if (maps) {
+        doc.setTextColor(0, 0, 255);
+        doc.setFont("helvetica", "underline");
+        doc.textWithLink(campo, 60, y, { url: maps });
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.text(campo, 60, y);
+      }
+
+      y += 15;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("LISTA GIOCATORI", 105, y, { align: "center" });
+
+      y += 10;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      [...tabellaBody.children].forEach((tr, i) => {
+        doc.text(`${i + 1}. ${tr.children[1].textContent}`, 20, y);
+        y += 8;
+      });
+
+      doc.save("lista_calcetto.pdf");
+    }
+  </script>
+</body>
+</html>
