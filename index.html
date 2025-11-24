@@ -36,10 +36,22 @@
   <input type="time" id="orario" step="60">
 
   <label for="campo">Campo:</label>
-  <input type="text" id="campo">
+  <input type="text" id="campo" placeholder="Nome campo">
 
   <label for="maps">Link Maps (opzionale):</label>
   <input type="text" id="maps" placeholder="https://maps.google.com/...">
+
+  <!-- Gestione campi salvati -->
+  <button onclick="salvaCampo()">Salva questo campo</button>
+
+  <label for="campiSalvati">Campi salvati:</label>
+  <select id="campiSalvati">
+    <option value="">-- Seleziona un campo salvato --</option>
+  </select>
+  <button onclick="usaCampoSelezionato()">Usa campo selezionato</button>
+  <button onclick="eliminaCampoSelezionato()">Elimina campo</button>
+
+  <hr>
 
   <label for="giocatori">Seleziona giocatori:</label>
   <select id="giocatori" multiple size="10">
@@ -80,6 +92,11 @@
   <button onclick="aggiungiTutti()">Aggiungi tutti</button>
   <button onclick="pulisciLista()">Pulisci lista</button>
 
+  <!-- Aggiungi giocatore manuale -->
+  <label for="nuovoGiocatore">Aggiungi giocatore manualmente:</label>
+  <input type="text" id="nuovoGiocatore" placeholder="Nome giocatore">
+  <button onclick="aggiungiGiocatoreManuale()">Aggiungi manuale</button>
+
   <h3>Lista Giocatori</h3>
   <table id="tabellaGiocatori">
     <thead>
@@ -96,7 +113,24 @@
 
   <script>
     const tabellaBody = document.querySelector("#tabellaGiocatori tbody");
+    const STORAGE_KEY_CAMPI = "calcetto_campi_salvati";
+    const STORAGE_KEY_GIOCATORI_EXTRA = "calcetto_giocatori_extra";
 
+    // ---------- INIT ----------
+    window.addEventListener("load", () => {
+      caricaCampiSalvatiDaStorage();
+      caricaGiocatoriExtraDaStorage();
+
+      // Enter nell'input nuovoGiocatore
+      document.getElementById("nuovoGiocatore").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          aggiungiGiocatoreManuale();
+        }
+      });
+    });
+
+    // ---------- GIOCATORI ----------
     function aggiornaNumeri() {
       [...tabellaBody.children].forEach((tr, i) => {
         tr.children[0].textContent = i + 1;
@@ -113,6 +147,16 @@
       Array.from(select.options).forEach(opt => aggiungiGiocatore(opt.text));
     }
 
+    function aggiungiGiocatoreManuale() {
+      const input = document.getElementById("nuovoGiocatore");
+      const nome = input.value.trim();
+      if (!nome) return;
+      aggiungiGiocatore(nome);
+      aggiungiGiocatoreAllaSelect(nome);
+      salvaGiocatoreExtra(nome);
+      input.value = "";
+    }
+
     function aggiungiGiocatore(nome) {
       if (![...tabellaBody.children].some(tr => tr.children[1].textContent === nome)) {
         const tr = document.createElement("tr");
@@ -120,8 +164,12 @@
         const tdNome = document.createElement("td");
         const tdAzione = document.createElement("td");
         const btn = document.createElement("button");
+
         btn.textContent = "Rimuovi";
-        btn.onclick = () => { tr.remove(); aggiornaNumeri(); };
+        btn.onclick = () => {
+          tr.remove();
+          aggiornaNumeri();
+        };
 
         tdNome.textContent = nome;
         tdAzione.appendChild(btn);
@@ -137,6 +185,99 @@
       tabellaBody.innerHTML = "";
     }
 
+    function aggiungiGiocatoreAllaSelect(nome) {
+      const select = document.getElementById("giocatori");
+      if (![...select.options].some(opt => opt.text === nome)) {
+        const opt = document.createElement("option");
+        opt.text = nome;
+        select.appendChild(opt);
+      }
+    }
+
+    function salvaGiocatoreExtra(nome) {
+      let extra = JSON.parse(localStorage.getItem(STORAGE_KEY_GIOCATORI_EXTRA) || "[]");
+      if (!extra.includes(nome)) {
+        extra.push(nome);
+        localStorage.setItem(STORAGE_KEY_GIOCATORI_EXTRA, JSON.stringify(extra));
+      }
+    }
+
+    function caricaGiocatoriExtraDaStorage() {
+      const extra = JSON.parse(localStorage.getItem(STORAGE_KEY_GIOCATORI_EXTRA) || "[]");
+      extra.forEach(nome => aggiungiGiocatoreAllaSelect(nome));
+    }
+
+    // ---------- CAMPI SALVATI ----------
+    function salvaCampo() {
+      const nomeCampo = document.getElementById("campo").value.trim();
+      const linkMaps = document.getElementById("maps").value.trim();
+
+      if (!nomeCampo) {
+        alert("Inserisci almeno il nome del campo per salvarlo.");
+        return;
+      }
+
+      let campi = JSON.parse(localStorage.getItem(STORAGE_KEY_CAMPI) || "[]");
+
+      const esistenteIndex = campi.findIndex(c => c.nome === nomeCampo);
+      if (esistenteIndex >= 0) {
+        // aggiorna
+        campi[esistenteIndex].maps = linkMaps;
+      } else {
+        campi.push({ nome: nomeCampo, maps: linkMaps });
+      }
+
+      localStorage.setItem(STORAGE_KEY_CAMPI, JSON.stringify(campi));
+      popolaSelectCampi(campi);
+    }
+
+    function caricaCampiSalvatiDaStorage() {
+      const campi = JSON.parse(localStorage.getItem(STORAGE_KEY_CAMPI) || "[]");
+      popolaSelectCampi(campi);
+    }
+
+    function popolaSelectCampi(campi) {
+      const select = document.getElementById("campiSalvati");
+      select.innerHTML = "";
+      const optDefault = document.createElement("option");
+      optDefault.value = "";
+      optDefault.textContent = "-- Seleziona un campo salvato --";
+      select.appendChild(optDefault);
+
+      campi.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.nome;
+        opt.textContent = c.nome;
+        opt.dataset.maps = c.maps || "";
+        select.appendChild(opt);
+      });
+    }
+
+    function usaCampoSelezionato() {
+      const select = document.getElementById("campiSalvati");
+      const nomeSel = select.value;
+      if (!nomeSel) return;
+
+      const campi = JSON.parse(localStorage.getItem(STORAGE_KEY_CAMPI) || "[]");
+      const trovato = campi.find(c => c.nome === nomeSel);
+      if (trovato) {
+        document.getElementById("campo").value = trovato.nome;
+        document.getElementById("maps").value = trovato.maps || "";
+      }
+    }
+
+    function eliminaCampoSelezionato() {
+      const select = document.getElementById("campiSalvati");
+      const nomeSel = select.value;
+      if (!nomeSel) return;
+
+      let campi = JSON.parse(localStorage.getItem(STORAGE_KEY_CAMPI) || "[]");
+      campi = campi.filter(c => c.nome !== nomeSel);
+      localStorage.setItem(STORAGE_KEY_CAMPI, JSON.stringify(campi));
+      popolaSelectCampi(campi);
+    }
+
+    // ---------- PDF ----------
     async function generaPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
